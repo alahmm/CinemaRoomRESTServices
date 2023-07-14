@@ -17,10 +17,16 @@ public class CinemaController {
     @Autowired
     private Cinema cinema;
     @GetMapping("/seats")
-    public String getSeats() throws JsonProcessingException {
-        ObjectMapper objectMapper = new ObjectMapper();
-        return objectMapper.writerWithDefaultPrettyPrinter().
-                writeValueAsString(cinema);
+    public String getSeats() {
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            return objectMapper.writerWithDefaultPrettyPrinter().
+                    writeValueAsString(cinema);
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+
+        return null;
     }
 
 }
