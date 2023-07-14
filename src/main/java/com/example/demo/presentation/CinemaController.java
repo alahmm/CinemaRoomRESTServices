@@ -4,6 +4,7 @@ import com.example.demo.buisnesslayout.Cinema;
 import com.example.demo.buisnesslayout.Seat;
 
 
+import com.example.demo.buisnesslayout.Ticket;
 import com.example.demo.buisnesslayout.User;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -22,6 +23,9 @@ public class CinemaController {
     @Autowired
     private Cinema cinema;
     public Map<Seat, UUID> map = new HashMap<>();
+    private final Ticket ticket = new Ticket();
+    private final ReturnedTicket returnedTicket = new ReturnedTicket();
+
 
     @GetMapping("/seats")
     public String getSeats() {
@@ -34,6 +38,29 @@ public class CinemaController {
         }
 
         return null;
+    }
+    public int incomeCalculated(int row) {
+        if (row <= 4) {
+            return 10;
+        }
+        return 8;
+    }
+    @GetMapping("/stats")
+    public ResponseEntity<String> getStat(@RequestParam Optional<String> password) throws JsonProcessingException {
+            ObjectMapper objectMapper = new ObjectMapper();
+            if (password.isPresent()) {
+                password = password.filter(s->s.equals("super_secret"));
+                    if (password.isPresent()) {
+                        return new ResponseEntity<>(objectMapper.writerWithDefaultPrettyPrinter().
+                                writeValueAsString(ticket), HttpStatus.OK);
+                    }
+                }
+
+        return new ResponseEntity<>("{\n" +
+                "    \"error\": \"The password is wrong!\"\n" +
+                "}"
+                ,HttpStatus.UNAUTHORIZED
+        );
     }
     @PostMapping("/purchase")
     public ResponseEntity<String> placeStatus(@RequestBody Seat seat) throws JsonProcessingException {
@@ -56,6 +83,12 @@ public class CinemaController {
                 UUID token = Token.generateType1UUID();
                 user.setToken(token);
                 map.put(seat, token);
+
+                int number = ticket.getCurrent_income();
+                ticket.setCurrent_income(incomeCalculated(seat.getRow()) + number);
+                number = ticket.getNumber_of_purchased_tickets();
+                ticket.setNumber_of_purchased_tickets(number + 1);
+                ticket.setNumber_of_available_seats(cinema.getListOfSeat().size());
                 return new ResponseEntity<>(objectMapper.writerWithDefaultPrettyPrinter().
                         writeValueAsString(user), HttpStatus.OK);
             }
@@ -68,7 +101,6 @@ public class CinemaController {
     }
     @PostMapping("/return")
     public ResponseEntity<String> ticketStatus(@RequestBody User user) throws JsonProcessingException {
-        ReturnedTicket returnedTicket = new ReturnedTicket();
         boolean isUsed = false;
         for (Map.Entry<Seat, UUID> newMap : map.entrySet()
              ) {
@@ -79,8 +111,16 @@ public class CinemaController {
             }
         }
         if (isUsed) {
+            int number = ticket.getCurrent_income();
+            Seat seat = returnedTicket.getReturned_ticket();
+            int row = seat.getRow();
+            ticket.setCurrent_income(number - incomeCalculated(row));
+            number = ticket.getNumber_of_purchased_tickets();
+            ticket.setNumber_of_purchased_tickets(number - 1);
+            ticket.setNumber_of_available_seats(cinema.getListOfSeat().size());
+
             ObjectMapper objectMapper = new ObjectMapper();
-            while (map.containsValue(user.getToken())) {
+            if (map.containsValue(user.getToken())) {
                 map.remove(returnedTicket.getReturned_ticket(), user.getToken());
             }
             return new ResponseEntity<>(objectMapper.writerWithDefaultPrettyPrinter().
