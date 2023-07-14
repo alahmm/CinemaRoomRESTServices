@@ -32,6 +32,11 @@ public class DemoApplication {
 				Seat seat = new Seat();
 				seat.setRow(i);
 				seat.setColumn(j);
+				if (i <= 4) {
+					seat.setPrice(10);
+				} else {
+					seat.setPrice(8);
+				}
 				seats.add(seat);
 			}
 		}
